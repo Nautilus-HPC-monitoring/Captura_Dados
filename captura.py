@@ -5,6 +5,8 @@ import time
 import csv
 from datetime import datetime
 import socket
+import logging
+from botocore.exceptions import ClientError
 
 start_msg = '''
 =========================================================================
@@ -124,6 +126,19 @@ cabecalho = [
 ]
 usuario = os.environ.get('USER')
 
+def upload_file(file_name, bucket, object_name):
+    if object_name is None:
+        object_name.os.path.basename(file_name)
+
+    try:
+        response = s3_client.upload_file(file_name, bucket, object_name) 
+    except ClientError as e:
+        logging.error(e)
+        return False
+    
+    return True
+
+
 def escrita():
     with open('./data.csv', 'w', newline='') as csvfile:
         csv.writer(csvfile, delimiter=';').writerow(cabecalho)
@@ -153,6 +168,10 @@ def escrita():
         with open('./data.csv', 'a', newline='') as csvfile:
             csv.writer(csvfile, delimiter=';').writerow(dados)
 
+        if upload_file('./data.csv', os.getenv('BUCKET_NAME'), f'{os.getenv('FILE_KEY')}/data.csv'):
+            print('Arquivo enviado com sucesso!')
+        else: 
+            print('Falha no envio')
 
         time.sleep(10)
 
