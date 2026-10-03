@@ -1,10 +1,12 @@
 import requests
 import psutil as p
 import os
+from dotenv import load_dotenv
 import time
 import csv
 from datetime import datetime
 import socket
+import boto3 as boto
 
 start_msg = '''
 =========================================================================
@@ -19,6 +21,16 @@ password = input('Senha: ')
 
 host = socket.gethostname()
 url_auth = "http://localhost:3000/api/autenticacao"
+
+load_dotenv()
+session = boto.Session(
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+    aws_session_token=os.getenv('AWS_SESSION_TOKEN'),
+    region_name=os.getenv('REGION_NAME')
+)
+
+s3_client = session.client("s3")
 
 flags_monitoramento = {}
 dados = []
