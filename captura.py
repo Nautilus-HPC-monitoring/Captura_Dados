@@ -145,7 +145,7 @@ def enviar_lote(linhas):
 
     objeto = (
         f'{os.getenv('FILE_KEY')}/'
-        f'hostname={host}/ano={time:%Y}/mes={time:%m}/dia={time:%d}/'
+        f'hostname={host}/ano={momento:%Y}/mes={momento:%m}/dia={momento:%d}/'
         f'{nome_caminho}'
     )
 
@@ -188,7 +188,7 @@ def escrita():
 
             if len(dados) >= LOTE:
                 if enviar_lote(dados):
-                    print(f'Lote de {len(dados)} linhas enviado com sucesso!')
+                    print(f'\nLote de {len(dados)} linhas enviado com sucesso!\n')
                     dados = []
                 else:
                     print('Falha no envio, as linhas continuam em dados e vão no próximo lote')
@@ -216,7 +216,7 @@ try:
 
     if res.get('autenticado'):
         print('\nAutenticação realizada com sucesso!')
-        print('Node:', res['node']['hostname'])
+        print(f'Node: {res['node']['hostname']}\n')
 
         componentes = res['componentesnode']
         authComponentes(componentes)
