@@ -6,7 +6,6 @@ import csv
 from datetime import datetime
 import socket
 import logging
-from botocore.exceptions import ClientError
 
 start_msg = '''
 =========================================================================
@@ -20,14 +19,13 @@ email = input('Email: ')
 password = input('Senha: ')
 
 host = socket.gethostname()
-url_auth = "http://localhost:3000/api/autenticacao"
+url_auth = 'http://localhost:3000/autenticacao'
 
 flags_monitoramento = {}
-dados = []
 
 def authComponentes(componentes):
     for componente in componentes:
-        flags_monitoramento[componente['tipo']] = True
+        flags_monitoramento[componente['componente']['tipo']] = True
 
 def coletar_cpu():
     if flags_monitoramento.get('CPU', False):
@@ -127,61 +125,88 @@ cabecalho = [
 usuario = os.environ.get('USER')
 
 def upload_file(file_name, bucket, object_name):
-    if object_name is None:
-        object_name.os.path.basename(file_name)
-
     try:
         response = s3_client.upload_file(file_name, bucket, object_name) 
-    except ClientError as e:
-        logging.error(e)
-        return False
+    except Exception as e:
+       logging.error(e)
+
+       return False
     
     return True
 
+INTERVALO = 10  
+LOTE = 6 
+
+def enviar_lote(linhas):
+    momento = datetime.now()
+    nome_caminho = f'data_{momento:%Y%m%d_%H%M%S}.csv'
+    caminho_local = f'./{nome_caminho}'
+
+
+    objeto = (
+        f'{os.getenv('FILE_KEY')}/'
+        f'hostname={host}/ano={time:%Y}/mes={time:%m}/dia={time:%d}/'
+        f'{nome_caminho}'
+    )
+
+    with open(caminho_local, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=';')
+        writer.writerow(cabecalho)
+        writer.writerows(linhas)
+
+    try:
+        return upload_file(caminho_local, os.getenv('BUCKET_NAME'), objeto)
+    finally:
+        os.remove(caminho_local)
+
 
 def escrita():
-    with open('./data.csv', 'w', newline='') as csvfile:
-        csv.writer(csvfile, delimiter=';').writerow(cabecalho)
+    dados = []
 
-    while True:
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        while True:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        cpu = coletar_cpu()
-        ram = coletar_ram()
-        swap = coletar_swap()
-        disco = coletar_disco()
+            cpu = coletar_cpu()
+            ram = coletar_ram()
+            swap = coletar_swap()
+            disco = coletar_disco()
 
-        linha = [
-            timestamp,
-            host,
-            usuario,
+            linha = [
+                timestamp,
+                host,
+                usuario,
 
-            *cpu,
-            *ram,
-            *swap,
-            *disco
-        ]
+                *cpu,
+                *ram,
+                *swap,
+                *disco
+            ]
 
-        dados.append(linha)
-        print(linha)
+            print(linha)
+            dados.append(linha)
 
-        with open('./data.csv', 'a', newline='') as csvfile:
-            csv.writer(csvfile, delimiter=';').writerow(dados)
+            if len(dados) >= LOTE:
+                if enviar_lote(dados):
+                    print(f'Lote de {len(dados)} linhas enviado com sucesso!')
+                    dados = []
+                else:
+                    print('Falha no envio, as linhas continuam em dados e vão no próximo lote')
 
-        if upload_file('./data.csv', os.getenv('BUCKET_NAME'), f'{os.getenv('FILE_KEY')}/data.csv'):
-            print('Arquivo enviado com sucesso!')
-        else: 
-            print('Falha no envio')
+            time.sleep(INTERVALO)
 
-        time.sleep(10)
+    except KeyboardInterrupt:
+        if dados:
+            enviar_lote(dados)
+        print('\nMonitoramento encerrado')
 
 try:
     res = requests.post(
         url_auth,
         json={
-            "email": email,
-            "senha": password,
-            "hostname": host
+            'email': email,
+            'senha': password,
+            'hostname': host
         }
     )
     res.raise_for_status()
@@ -189,21 +214,22 @@ try:
     res = res.json()
     print(res)
 
-    if res.get("autenticado"):
-        print("\nAutenticação realizada com sucesso!")
-        print("Hostname:", res["mainframe"]["hostname"])
+    if res.get('autenticado'):
+        print('\nAutenticação realizada com sucesso!')
+        print('Node:', res['node']['hostname'])
 
-        componentes = res["componentes"]
+        componentes = res['componentesnode']
         authComponentes(componentes)
 
         escrita()
 
     else:
-        print("Falha na autenticação! Email e/ou senha incorretos")
+        print('Falha na autenticação! Email e/ou senha incorretos')
 
 except requests.exceptions.HTTPError as erro:
-    print("Erro na autenticação:", erro)
+    print('Erro na autenticação:', erro)
+    print('Resposta do servidor:', erro.response.text)
 
 except requests.exceptions.RequestException as erro:
-    print("Não foi possível conectar à API:", erro)
+    print('Não foi possível conectar à API:', erro)
 
