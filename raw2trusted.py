@@ -21,4 +21,11 @@ def listar_chaves(prefixo):
     
     return chaves
 
-print(listar_chaves('raw/'))
+def transformar_chave(chave_raw):
+    if chave_raw.startswith('raw/'):
+            nova_chave = chave_raw.replace('raw/', 'trusted/', 1)
+    else:
+        raise ValueError(f'Chave não começa com raw/: {chave_raw}')
+
+    return nova_chave
+
