@@ -29,3 +29,18 @@ def transformar_chave(chave_raw):
 
     return nova_chave
 
+def listar_pendentes():
+    chaves = {
+        'chaves_raw': set(listar_chaves('raw/')),
+        'chaves_trusted': set(listar_chaves('trusted/'))
+    }
+
+    pendentes = []
+
+    for chave_raw in chaves['chaves_raw']:
+        chave_transformada = transformar_chave(chave_raw)
+
+        if chave_transformada not in chaves['chaves_trusted']:
+           pendentes.append(chave_raw)
+
+    return sorted(pendentes)
