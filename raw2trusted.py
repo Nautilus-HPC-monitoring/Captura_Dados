@@ -44,3 +44,17 @@ def listar_pendentes():
            pendentes.append(chave_raw)
 
     return sorted(pendentes)
+
+def baixar_arquivo(chave_raw):
+    caminho_local = 'raw_local/' + chave_raw
+    diretorio = os.path.dirname(caminho_local)
+
+    os.makedirs(diretorio, exist_ok=True)
+
+    s3_client.download_file(os.getenv('BUCKET_NAME'), chave_raw, caminho_local)
+
+    return caminho_local
+
+
+
+    
