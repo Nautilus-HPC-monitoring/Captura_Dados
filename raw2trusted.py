@@ -56,6 +56,11 @@ def baixar_arquivo(chave_raw):
 
     return caminho_local
 
+def ler_csv(caminho):
+    df = pd.read_csv(caminho, sep=';')
+
+    return df
+
 def limpar(df):
     colunas_numericas = [
     'CPU_PERCENT',
@@ -125,10 +130,13 @@ def limpar(df):
         'DISCO': ['DISCO_PERCENT','DISCO_TOTAL','DISCO_USED','DISCO_FREE']
     }
 
+    print(len(df))
+    df = df.copy()
+
     df['TIMESTAMP'] = pd.to_datetime(df['TIMESTAMP'], errors='coerce')
 
     for coluna in colunas_numericas:
-        df[coluna] = pd.to_numeric(df[coluna], errors='coerce')
+        df[coluna] = pd.to_numeric(df[coluna], errors='coerce').astype('float64')
 
     for coluna in colunas_percentual:
         invalido = (df[coluna] < 0) | (df[coluna] > 100)
@@ -143,11 +151,10 @@ def limpar(df):
         df.loc[invalido, coluna] = np.nan
 
     for grupo, lista in grupos_verificacao.items():
-        nao_monitorado = (df[lista] == 0).all().all()
-
-        if nao_monitorado:
-            df.drop(columns=lista, inplace=True)
-
+        nao_monitorado = (df[lista] == 0).all(axis=1)
+        df.loc[nao_monitorado, lista] = np.nan
+ 
+    df = df.dropna(subset=colunas_numericas, how='all')
     df.dropna(subset=['TIMESTAMP'], inplace=True)
     df.drop_duplicates(
         subset=['HOSTNAME', 'TIMESTAMP'],
@@ -155,5 +162,14 @@ def limpar(df):
         inplace=True
     )
 
+    print(df['DISCO_TOTAL'].isna().sum())
+    print(df['SWAP_IN'].isna().sum())
+    print(df['CPU_PERCENT'].isna().sum())
+    print(len(df))
     return df
+
+
+if __name__ == '__main__':
+    df = ler_csv('sujo.csv')
+    df_limpo = limpar(df)
 
