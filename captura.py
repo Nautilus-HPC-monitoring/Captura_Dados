@@ -7,17 +7,6 @@ from datetime import datetime
 import socket
 import logging
 
-start_msg = '''
-=========================================================================
-                REALIZE SUA AUTENTICAÇÃO PARA PROSSEGUIR!
-=========================================================================
-'''
-
-print(start_msg)
-
-email = input('Email: ')
-password = input('Senha: ')
-
 host = socket.gethostname()
 url_auth = 'http://localhost:3000/autenticacao'
 
@@ -159,7 +148,6 @@ def enviar_lote(linhas):
     finally:
         os.remove(caminho_local)
 
-
 def escrita():
     dados = []
 
@@ -200,36 +188,47 @@ def escrita():
             enviar_lote(dados)
         print('\nMonitoramento encerrado')
 
-try:
-    res = requests.post(
-        url_auth,
-        json={
-            'email': email,
-            'senha': password,
-            'hostname': host
-        }
-    )
-    res.raise_for_status()
+if __name__ == '__main__':
+    start_msg = '''
+    =========================================================================
+                    REALIZE SUA AUTENTICAÇÃO PARA PROSSEGUIR!
+    =========================================================================
+    '''
+    print(start_msg)
 
-    res = res.json()
-    print(res)
+    email = input('Email: ')
+    password = input('Senha: ')
 
-    if res.get('autenticado'):
-        print('\nAutenticação realizada com sucesso!')
-        print(f'Node: {res['node']['hostname']}\n')
+    try:
+        res = requests.post(
+            url_auth,
+            json={
+                'email': email,
+                'senha': password,
+                'hostname': host
+            }
+        )
+        res.raise_for_status()
 
-        componentes = res['componentesnode']
-        authComponentes(componentes)
+        res = res.json()
+        print(res)
 
-        escrita()
+        if res.get('autenticado'):
+            print('\nAutenticação realizada com sucesso!')
+            print(f'Node: {res['node']['hostname']}\n')
 
-    else:
-        print('Falha na autenticação! Email e/ou senha incorretos')
+            componentes = res['componentesnode']
+            authComponentes(componentes)
 
-except requests.exceptions.HTTPError as erro:
-    print('Erro na autenticação:', erro)
-    print('Resposta do servidor:', erro.response.text)
+            escrita()
 
-except requests.exceptions.RequestException as erro:
-    print('Não foi possível conectar à API:', erro)
+        else:
+            print('Falha na autenticação! Email e/ou senha incorretos')
+
+    except requests.exceptions.HTTPError as erro:
+        print('Erro na autenticação:', erro)
+        print('Resposta do servidor:', erro.response.text)
+
+    except requests.exceptions.RequestException as erro:
+        print('Não foi possível conectar à API:', erro)
 

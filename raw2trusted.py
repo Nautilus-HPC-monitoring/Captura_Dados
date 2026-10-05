@@ -2,6 +2,8 @@ import io
 import pandas as pd
 import numpy as np
 from config_aws import *
+from captura import upload_file
+import shutil 
 
 def listar_chaves(prefixo):
     paginator = s3_client.get_paginator('list_objects_v2')
@@ -130,7 +132,6 @@ def limpar(df):
         'DISCO': ['DISCO_PERCENT','DISCO_TOTAL','DISCO_USED','DISCO_FREE']
     }
 
-    print(len(df))
     df = df.copy()
 
     df['TIMESTAMP'] = pd.to_datetime(df['TIMESTAMP'], errors='coerce')
@@ -166,10 +167,6 @@ def limpar(df):
     for coluna in colunas_bytes:
         df[coluna] = df[coluna].astype('Int64')
 
-    print(df['DISCO_TOTAL'].isna().sum())
-    print(df['SWAP_IN'].isna().sum())
-    print(df['CPU_PERCENT'].isna().sum())
-    print(len(df))
     return df
 
 def gravar_csv(df, chave_raw):
@@ -183,3 +180,32 @@ def gravar_csv(df, chave_raw):
     return caminho_saida
 
 
+def processar(chave_raw):
+    caminho = baixar_arquivo(chave_raw)
+
+    df_lido = ler_csv(caminho)
+    df_limpo = limpar(df_lido)
+
+    file_trusted = gravar_csv(df_limpo, chave_raw)
+    chave_destino = transformar_chave(chave_raw)
+
+    return upload_file(file_trusted, os.getenv('BUCKET_NAME'), chave_destino)
+
+if __name__ == '__main__':
+    try:
+        chaves_pendentes = listar_pendentes()
+
+        for chave_atual in chaves_pendentes:
+            processar(chave_atual)
+
+        print('ETL concluída! :)')
+
+    finally:
+        shutil.rmtree('raw_local', ignore_errors=True)
+        shutil.rmtree('trusted_local', ignore_errors=True)
+
+        print('Arquivos locais temporários removidos!')
+
+
+    print(listar_chaves('trusted/'))
+    
