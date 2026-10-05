@@ -162,14 +162,24 @@ def limpar(df):
         inplace=True
     )
 
+    df['CPU_COUNT_LOGICA'] = df['CPU_COUNT_LOGICA'].astype('Int64')
+    for coluna in colunas_bytes:
+        df[coluna] = df[coluna].astype('Int64')
+
     print(df['DISCO_TOTAL'].isna().sum())
     print(df['SWAP_IN'].isna().sum())
     print(df['CPU_PERCENT'].isna().sum())
     print(len(df))
     return df
 
+def gravar_csv(df, chave_raw):
+    caminho_saida = 'trusted_local/' + transformar_chave(chave_raw)
+    diretorio = os.path.dirname(caminho_saida)
 
-if __name__ == '__main__':
-    df = ler_csv('sujo.csv')
-    df_limpo = limpar(df)
+    os.makedirs(diretorio, exist_ok=True)
+
+    df.to_csv(caminho_saida, sep=';', index=False, date_format='%Y-%m-%d %H:%M:%S', na_rep='')
+
+    return caminho_saida
+
 
